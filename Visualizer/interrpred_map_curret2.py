@@ -141,31 +141,46 @@ def FIND_DRIVERS_ROUND_1_2(cdtmap_data, base_map, order, drivers, path_map):
         road_to_dist_m = (len(path_order) - 1) * cdtmap_data['box_size_m']
     
     drivers_round1_data = []
+    current_max_dist = MAX_DIST_M
+    max_attempts = 5
+    attempt = 0
     
-    for _, driver in drivers.iterrows():
-        pos_d_lat = driver['locationlatitude']
-        pos_d_lon = driver['locationlongitude']
-        fly_dist = Calc_fly_dist(pos_lat, pos_lon, pos_d_lat, pos_d_lon)
+    while attempt < max_attempts:
+        print(f"Поиск водителей в радиусе {current_max_dist:.0f} метров (попытка {attempt + 1})")
         
-        if fly_dist <= MAX_DIST_M:
-            pos_d_x, pos_d_y = coord_to_cell(cdtmap_data, pos_d_lat, pos_d_lon)
+        for _, driver in drivers.iterrows():
+            pos_d_lat = driver['locationlatitude']
+            pos_d_lon = driver['locationlongitude']
+            fly_dist = Calc_fly_dist(pos_lat, pos_lon, pos_d_lat, pos_d_lon)
             
-            path_drv = astar(base_map, (pos_d_x, pos_d_y), (pos_x, pos_y))
-            
-            driver_data = driver.to_dict()
-            driver_data['fly_dist'] = fly_dist 
-            driver_data['fly_to_dist'] = fly_order_dist
-            
-            if path_drv is None:
-                driver_data['road_dist'] = 0
-            else:
-                driver_data['road_dist'] = (len(path_drv)-1)*cdtmap_data['box_size_m']
-                path_map[:, :] = draw_path_on_map(path_map[:, :], path_drv, 200)
-            
-            print(f"Driver {driver['driver_id']} fly distance: {driver_data['fly_dist']:.1f}m road distance: {driver_data['road_dist']:.1f}m")
-            
-            driver_data['road_to_dist'] = road_to_dist_m
-            drivers_round1_data.append(driver_data)
+            if fly_dist <= current_max_dist:
+                pos_d_x, pos_d_y = coord_to_cell(cdtmap_data, pos_d_lat, pos_d_lon)
+                
+                path_drv = astar(base_map, (pos_d_x, pos_d_y), (pos_x, pos_y))
+                
+                driver_data = driver.to_dict()
+                driver_data['fly_dist'] = fly_dist 
+                driver_data['fly_to_dist'] = fly_order_dist
+                
+                if path_drv is None:
+                    driver_data['road_dist'] = 0
+                else:
+                    driver_data['road_dist'] = (len(path_drv)-1)*cdtmap_data['box_size_m']
+                    path_map[:, :] = draw_path_on_map(path_map[:, :], path_drv, 200)
+                
+                print(f"Driver {driver['driver_id']} fly distance: {driver_data['fly_dist']:.1f}m road distance: {driver_data['road_dist']:.1f}m")
+                
+                driver_data['road_to_dist'] = road_to_dist_m
+                drivers_round1_data.append(driver_data)
+        
+        if len(drivers_round1_data) > 0:
+            break
+
+        current_max_dist *= 2
+        attempt += 1
+    
+    if len(drivers_round1_data) == 0:
+        print("Не удалось найти ни одного водителя даже после увеличения радиуса поиска")
     
     drivers_round1_2 = pd.DataFrame(drivers_round1_data)
     return drivers_round1_2
@@ -219,8 +234,9 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file):
         row_d, col_d = coord_to_cell(cdtmap_data, driver['locationlatitude'], driver['locationlongitude'])
         draw_point(orders_layer, cpbase_map, row_d, col_d, h, w, [0, 0, 255, 255])  # RGBA green
 
-    specific_order = orders[orders['order_id'] == 7828671687].iloc[0]
-    drivers_round = FIND_DRIVERS_ROUND_1_2(cdtmap_data, cpbase_map, specific_order, drivers, path_map)
+
+    for _, order in orders.iterrows():
+        drivers_round = FIND_DRIVERS_ROUND_1_2(cdtmap_data, cpbase_map, order, drivers, path_map)
     
     fig, ax = plt.subplots(figsize=(12, 12))
     
