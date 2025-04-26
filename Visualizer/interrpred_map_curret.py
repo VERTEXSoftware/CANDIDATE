@@ -6,7 +6,7 @@ import math
 import heapq
 from typing import List, Tuple, Optional
 
-MAX_DIST_M = 5000
+MAX_DIST_M = 3000
 
 def draw_path(base_map, path_astar, width, height, path_value=200):
     path_map = np.copy(base_map).reshape(height, width)
@@ -19,14 +19,14 @@ def draw_path(base_map, path_astar, width, height, path_value=200):
 def draw_path_on_map(cpbase_map: np.ndarray, path: List[Tuple[int, int]], path_value: int = 200) -> np.ndarray:
     """Отрисовывает путь на копии карты."""
     if path is None:
-        raise ValueError("Path is None. Cannot draw.")
+        return cpbase_map
     path_map = cpbase_map.copy()
     for y, x in path:  # Обратите внимание: (y, x) для numpy-матрицы!
-        path_map[y, x] = path_value
+        if 0 <= y < path_map.shape[0] and 0 <= x < path_map.shape[1]:
+            path_map[y, x] = path_value
     return path_map
 
 def coord_to_cell(cdtmap_data, latitude, longitude):
-
     south, north = cdtmap_data['x1'], cdtmap_data['x2']
     west, east = cdtmap_data['y1'], cdtmap_data['y2']
 
@@ -48,8 +48,6 @@ def draw_point(orders_layer, base_map, y, x, h, w, clr):
             if 0 <= x+i < w and 0 <= y+j < h:
                 orders_layer[y+j, x+i] = clr
                 base_map[y+j, x+i] = 1
-
-
 
 def heuristic(a: Tuple[int, int], b: Tuple[int, int]) -> int:
     """Манхэттенское расстояние между точками a и b."""
@@ -96,8 +94,11 @@ def astar(cpbase_map: np.ndarray, start: Tuple[int, int], goal: Tuple[int, int])
     g_score = {start: 0}
     f_score = {start: heuristic(start, goal)}
 
+    open_set_hash = {start}  # Для быстрой проверки наличия в open_set
+
     while open_set:
         _, current = heapq.heappop(open_set)
+        open_set_hash.remove(current)
 
         if current == goal:
             # Восстановление пути
@@ -120,37 +121,31 @@ def astar(cpbase_map: np.ndarray, start: Tuple[int, int], goal: Tuple[int, int])
                     came_from[neighbor] = current
                     g_score[neighbor] = tentative_g_score
                     f_score[neighbor] = tentative_g_score + heuristic(neighbor, goal)
-                    heapq.heappush(open_set, (f_score[neighbor], neighbor))
+                    if neighbor not in open_set_hash:
+                        heapq.heappush(open_set, (f_score[neighbor], neighbor))
+                        open_set_hash.add(neighbor)
 
     return None
 
-
-def FIND_DRIVERS_ROUND_1_2(cdtmap_data,base_map, order, drivers, path_map):
-    
+def FIND_DRIVERS_ROUND_1_2(cdtmap_data, base_map, order, drivers, path_map):
     h = cdtmap_data['height']
     w = cdtmap_data['width']
     
     pos_lat = order['fromlatitude']
     pos_lon = order['fromlongitude']  
-    
     pos_to_lat = order['tolatitude']
     pos_to_lon = order['tolongitude'] 
-    
-    
     
     pos_x, pos_y = coord_to_cell(cdtmap_data, pos_lat, pos_lon)
     pos_to_x, pos_to_y = coord_to_cell(cdtmap_data, pos_to_lat, pos_to_lon)
     
     fly_order_dist = Calc_fly_dist(pos_lat, pos_lon, pos_to_lat, pos_to_lon)
-    path_order_dist = astar(base_map, (pos_x, pos_y), (pos_to_x,pos_to_y))
+    path_order = astar(base_map, (pos_x, pos_y), (pos_to_x, pos_to_y))
     
-    #draw_point(path_map, base_map,  pos_x, col_d, h, w, [64, 128, 255, 255]) 
-    
-    if path_order_dist == None:
-        road_to_dist_m =0
+    if path_order is None:
+        road_to_dist_m = 0
     else:
-        road_to_dist_m =(len(path_order_dist) - 1)*cdtmap_data['box_size_m']
-        #print(road_to_dist_m)
+        road_to_dist_m = (len(path_order) - 1) * cdtmap_data['box_size_m']
     
     drivers_round1_data = []
     
@@ -160,38 +155,26 @@ def FIND_DRIVERS_ROUND_1_2(cdtmap_data,base_map, order, drivers, path_map):
         fly_dist = Calc_fly_dist(pos_lat, pos_lon, pos_d_lat, pos_d_lon)
         
         if fly_dist <= MAX_DIST_M:
-            
-            pos_d_lat = driver['locationlatitude']
-            pos_d_lon = driver['locationlongitude']
-        
             pos_d_x, pos_d_y = coord_to_cell(cdtmap_data, pos_d_lat, pos_d_lon)
             
-            path_drv = astar(base_map,  (pos_x, pos_y), (pos_d_x,pos_d_y))
+            path_drv = astar(base_map, (pos_d_x, pos_d_y), (pos_x, pos_y))
             
             driver_data = driver.to_dict()
             driver_data['fly_dist'] = fly_dist 
             driver_data['fly_to_dist'] = fly_order_dist
             
-            if path_order_dist == None:
-                driver_data['road_dist'] =0
+            if path_drv is None:
+                driver_data['road_dist'] = 0
             else:
                 driver_data['road_dist'] = (len(path_drv)-1)*cdtmap_data['box_size_m']
-                print(driver_data['road_dist'] )
+                path_map[:, :] = draw_path_on_map(path_map[:, :], path_drv, 200)
+            
+            print(f"Driver {driver['driver_id']} fly distance: {driver_data['fly_dist']:.1f}m road distance: {driver_data['road_dist']:.1f}m")
             
             driver_data['road_to_dist'] = road_to_dist_m
             drivers_round1_data.append(driver_data)
-            
-            if path_drv != None:
-                draw_path_on_map(path_map, path_drv)
-    
-    
-   
     
     drivers_round1_2 = pd.DataFrame(drivers_round1_data)
-    
-        
-        
-    
     return drivers_round1_2
 
 def read_cdtmap(filename):
@@ -215,10 +198,9 @@ def read_cdtmap(filename):
             'y2': y2,
             'width': width,
             'height': height,
-            'box_size_m' : (width_m + height_m)/2.0,
+            'box_size_m': (width_m + height_m)/2.0,
             'data': output_buffer
         }
-
 
 def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file):
     h = cdtmap_data['height']
@@ -228,12 +210,12 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file):
     cpbase_map = base_map.reshape((h, w)).copy()
     
     orders_layer = np.zeros((h, w, 4), dtype=np.uint8)
+    path_map = np.zeros((h, w), dtype=np.uint8)  # Отдельный слой для пути
     
     orders = pd.read_csv(orders_file)
     drivers = pd.read_csv(drivers_file)
     
     for _, order in orders.iterrows():
-
         row_a, col_a = coord_to_cell(cdtmap_data, order['fromlatitude'], order['fromlongitude'])
         draw_point(orders_layer, cpbase_map, row_a, col_a, h, w, [255, 0, 0, 255])  # RGBA red
         
@@ -244,18 +226,17 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file):
         row_d, col_d = coord_to_cell(cdtmap_data, driver['locationlatitude'], driver['locationlongitude'])
         draw_point(orders_layer, cpbase_map, row_d, col_d, h, w, [0, 0, 255, 255])  # RGBA green
 
-    path_map = np.zeros((h, w, 1), dtype=np.uint8)
-    
     specific_order = orders[orders['order_id'] == 7828671687].iloc[0]
-    
-    FIND_DRIVERS_ROUND_1_2(cdtmap_data,cpbase_map,specific_order,drivers,path_map)
-   
+    drivers_round = FIND_DRIVERS_ROUND_1_2(cdtmap_data, cpbase_map, specific_order, drivers, path_map)
     
     fig, ax = plt.subplots(figsize=(12, 12))
-
     
+
+    # Отображаем базовую карту
     ax.imshow(cpbase_map, cmap='gray')
-    ax.imshow(path_map, alpha=0.8)
+    # Отображаем пути (белым цветом)
+    ax.imshow(path_map,alpha=0.8)
+    # Отображаем точки заказов и водителей
     ax.imshow(orders_layer, alpha=0.7)
 
     ax.set_xlabel('Longitude')
@@ -266,7 +247,8 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file):
     legend_elements = [
         Patch(facecolor='red', label='Клиент'),
         Patch(facecolor='green', label='Точка назначения'),
-        Patch(facecolor='blue', label='Водители')
+        Patch(facecolor='blue', label='Водители'),
+        Patch(facecolor='yellow', label='Путь')
     ]
     ax.legend(handles=legend_elements, loc='upper right')
     
@@ -274,6 +256,5 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file):
     plt.show()
 
 map_data = read_cdtmap("./Data/data_map.CDTMAP")
-
-print(f"Размер ячейки: {map_data['box_size_m']:.1f}")
+print(f"Размер ячейки: {map_data['box_size_m']:.1f} метров")
 plot_cdtmap_with_orders_and_drivers(map_data, "./Data/orders.csv", "./Data/drivers.csv")
