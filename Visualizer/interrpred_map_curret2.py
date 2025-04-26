@@ -5,8 +5,20 @@ import pandas as pd
 import math
 import heapq
 from typing import List, Tuple, Optional
+import csv
 
 MAX_DIST_M = 3000
+
+
+def create_csv(filename, data, delimiter=','):
+    try:
+        with open(filename, 'w', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file, delimiter=delimiter)
+            writer.writerows(data)
+        print(f"Данные сохранены {filename}")
+    except Exception as e:
+        print(f"Ошибка при создании файла: {e}")
+
 
 def draw_path(base_map, path_astar, width, height, path_value=255):
     path_map = np.copy(base_map).reshape(height, width)
@@ -120,7 +132,10 @@ def astar(cpbase_map: np.ndarray, start: Tuple[int, int], goal: Tuple[int, int])
 
     return None
 
-def FIND_DRIVERS_ROUND_1_2(cdtmap_data, base_map, order, drivers, path_map):
+def Select_Drivers(order, drivers_stack):
+    return 
+
+def FIND_DRIVERS_ROUND_1_2(cdtmap_data, base_map, order, drivers, path_map,path_to_map):
     h = cdtmap_data['height']
     w = cdtmap_data['width']
     
@@ -139,6 +154,7 @@ def FIND_DRIVERS_ROUND_1_2(cdtmap_data, base_map, order, drivers, path_map):
         road_to_dist_m = 0
     else:
         road_to_dist_m = (len(path_order) - 1) * cdtmap_data['box_size_m']
+        path_to_map[:, :] = draw_path_on_map(path_to_map[:, :], path_order, 200)
     
     drivers_round1_data = []
     current_max_dist = MAX_DIST_M
@@ -171,6 +187,10 @@ def FIND_DRIVERS_ROUND_1_2(cdtmap_data, base_map, order, drivers, path_map):
                 print(f"Driver {driver['driver_id']} fly distance: {driver_data['fly_dist']:.1f}m road distance: {driver_data['road_dist']:.1f}m")
                 
                 driver_data['road_to_dist'] = road_to_dist_m
+                
+                driver_data['max_dist'] = max(driver_data['road_dist'], driver_data['fly_dist'])
+                driver_data['max_to_dist'] = max(driver_data['road_to_dist'], driver_data['fly_to_dist'])     
+                       
                 drivers_round1_data.append(driver_data)
         
         if len(drivers_round1_data) > 0:
@@ -218,7 +238,8 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file):
     cpbase_map = base_map.reshape((h, w)).copy()
     
     orders_layer = np.zeros((h, w, 4), dtype=np.uint8)
-    path_map = np.zeros((h, w), dtype=np.uint8)  # Отдельный слой для пути
+    path_map = np.zeros((h, w), dtype=np.uint8)
+    path_to_map = np.zeros((h, w), dtype=np.uint8)
     
     orders = pd.read_csv(orders_file)
     drivers = pd.read_csv(drivers_file)
@@ -236,16 +257,16 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file):
 
 
     for _, order in orders.iterrows():
-        drivers_round = FIND_DRIVERS_ROUND_1_2(cdtmap_data, cpbase_map, order, drivers, path_map)
+        drivers_round = FIND_DRIVERS_ROUND_1_2(cdtmap_data, cpbase_map, order, drivers, path_map,path_to_map)
     
     fig, ax = plt.subplots(figsize=(12, 12))
     
 
-    # Отображаем базовую карту
+
     ax.imshow(cpbase_map, cmap='gray')
-    # Отображаем пути (белым цветом)
-    ax.imshow(path_map,alpha=0.8)
-    # Отображаем точки заказов и водителей
+
+    ax.imshow(path_to_map,alpha=0.8)
+
     ax.imshow(orders_layer, alpha=0.7)
 
     ax.set_xlabel('Longitude')
@@ -257,7 +278,7 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file):
         Patch(facecolor='red', label='Клиент'),
         Patch(facecolor='green', label='Точка назначения'),
         Patch(facecolor='blue', label='Водители'),
-        Patch(facecolor='yellow', label='Путь')
+        Patch(facecolor='yellow', label='Путь до точки назначения'),
     ]
     ax.legend(handles=legend_elements, loc='upper right')
     
