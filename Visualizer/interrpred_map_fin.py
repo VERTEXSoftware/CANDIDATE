@@ -5,6 +5,10 @@ import pandas as pd
 import math
 
 
+def Calc_fly_dist(x1,y1,x2,y2):
+    return 0
+
+
 
 def read_cdtmap(filename):
     with open(filename, 'rb') as file:
@@ -97,7 +101,7 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file):
     plt.tight_layout()
     plt.show()
 
-map_data = read_cdtmap("output.CDTMAP")
+map_data = read_cdtmap("./Data/data_map.CDTMAP")
 
 print(f"Размер ячейки: {map_data['box_size_m']:.1f}")
-plot_cdtmap_with_orders_and_drivers(map_data, "Data/orders.csv", "Data/drivers.csv")
+plot_cdtmap_with_orders_and_drivers(map_data, "./Data/orders.csv", "./Data/drivers.csv")
