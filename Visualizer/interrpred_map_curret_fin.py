@@ -63,7 +63,6 @@ def draw_point(orders_layer, base_map, y, x, h, w, clr):
                 base_map[y+j, x+i] = 1
 
 def heuristic(a: Tuple[int, int], b: Tuple[int, int]) -> int:
-    """Манхэттенское расстояние между точками a и b."""
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 def Calc_fly_dist(lat1, lon1, lat2, lon2):
@@ -84,9 +83,6 @@ def Calc_fly_dist(lat1, lon1, lat2, lon2):
 
 def astar(cpbase_map: np.ndarray, start: Tuple[int, int], goal: Tuple[int, int]) -> Optional[List[Tuple[int, int]]]:
 
-    if not isinstance(cpbase_map, np.ndarray):
-        raise TypeError("cpbase_map должен быть numpy.ndarray!")
-    
     h, w = cpbase_map.shape
     neighbors = [(0, 1), (1, 0), (0, -1), (-1, 0)]
 
@@ -267,15 +263,12 @@ def FIND_DRIVERS_ROUND_3_4(order, drivers_round, users, drivers_stat):
     
     start_price = order['start_price']
     best_score = -float('inf')
-    best_driver_id = None
-    
+    best_driver_id = None 
     for _, driver in drivers_round.iterrows():
         driver_id = driver['driver_id']
         max_dist = driver['max_dist']
-        max_to_dist = driver['max_to_dist']
-        
-        driver_stats = drivers_stat[drivers_stat['driver_id'] == driver_id]
-        
+        max_to_dist = driver['max_to_dist']       
+        driver_stats = drivers_stat[drivers_stat['driver_id'] == driver_id]      
         if not driver_stats.empty:
             stats = driver_stats.iloc[0]
             avg_price_per_meter_fly = stats['avg_price_per_meter_fly']
@@ -284,35 +277,27 @@ def FIND_DRIVERS_ROUND_3_4(order, drivers_round, users, drivers_stat):
             avg_max_distance_meters = stats['avg_max_distance_meters']
             avg_rating = stats['avg_rating']
             avg_price = stats['avg_price']
-            total_ride_price = stats['total_ride_price']
-            
+            total_ride_price = stats['total_ride_price']  
             # 1. Коэффициент близости (чем ближе - тем лучше)
-            distance_score = 1 / (max_dist + 0.1)  # +0.1 чтобы избежать деления на 0
-            
+            distance_score = 1 / (max_dist + 0.1)  # +0.1 чтобы избежать деления на 0  
             # 2. Соотношение цены клиента к средней цене за метр (выгодность заказа)
-            price_ratio = start_price / (max_to_dist * max_avg_price_meter)
-            
+            price_ratio = start_price / (max_to_dist * max_avg_price_meter)  
             # 3. Соответствие дистанции заказа возможностям водителя
-            distance_suitability = 1 - min(1, max_to_dist / (avg_max_distance_meters + 0.1))
-            
+            distance_suitability = 1 - min(1, max_to_dist / (avg_max_distance_meters + 0.1))      
             # 4. Приоритет для водителей с малым заработком (обратная зависимость)
-            earnings_priority = 1 / (total_ride_price + 1000)  # +1000 чтобы избежать слишком больших значений
-            
+            earnings_priority = 1 / (total_ride_price + 1000)  # +1000 чтобы избежать слишком больших значений     
             # Итоговый score (можно настроить веса)
             score = (
                 0.3 * distance_score +         # Важность близости водителя
                 0.4 * price_ratio +            # Важность выгодности цены
                 0.2 * distance_suitability +   # Важность подходящей дистанции
                 0.1 * earnings_priority        # Важность поддержки новых водителей
-            )
-            
+            )        
             # Добавляем небольшой случайный фактор для разнообразия
-            score *= (0.95 + 0.1 * random.random())
-            
+            score *= (0.95 + 0.1 * random.random())   
             if score > best_score:
                 best_score = score
                 best_driver_id = driver_id
-    
     return best_driver_id
 
 def DRIVER_REUSE_CFG(drivers_reuse, driver, order):
