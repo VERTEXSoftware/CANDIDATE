@@ -133,7 +133,7 @@ def astar(cpbase_map: np.ndarray, start: Tuple[int, int], goal: Tuple[int, int])
     return None
 
 
-def FIND_DRIVERS_ROUND_1_2(cdtmap_data, base_map, order, drivers, path_map,path_to_map):
+def FIND_DRIVERS_ROUND_1_2(cdtmap_data, base_map, order, drivers, path_map, path_to_map):
     h = cdtmap_data['height']
     w = cdtmap_data['width']
     
@@ -229,25 +229,25 @@ def read_cdtmap(filename):
         }
         
         
-def FIND_DRIVERS_ROUND_3_4(order,drivers_round,users):
- 
+def FIND_DRIVERS_ROUND_3_4(order, drivers_round, users):
+    if drivers_round.empty:
+        return None
+        
     selected_driver = drivers_round.loc[drivers_round['max_dist'].idxmin()]
-    
-      
-    return selected_driver['id']
+    return selected_driver['driver_id']
 
-def DRIVER_REUSE_CFG(drivers_reuse, driver,order):
+def DRIVER_REUSE_CFG(drivers_reuse, driver, order):
     driver['locationlatitude'] = order['tolatitude']
     driver['locationlongitude'] = order['tolongitude']
     return pd.concat([drivers_reuse, driver.to_frame().T], ignore_index=True)
     
-def save_driver_order_info(driver, order, user, filename='driver_order_info.csv'):
+def save_driver_order_info(driver, order, user, filename='./Data/driver_order_result.csv'):
     """Сохраняет информацию о водителе и заказе в CSV перед reuse"""
     data = {
         'driver_id': [driver['driver_id']],
         'order_id': [order['order_id']],
         'start_price': [order['start_price']],
-        'ride_price': [None],  # Если ride_price нет в данных, можно оставить None
+        'ride_price': [order['start_price']],  # Допустим столько же заплатит 
         'order_type_group': [order['order_type_group']],
         'rating3': [user['pass_rating']],  # Предполагаем, что это рейтинг пользователя
         'fromlatitude': [order['fromlatitude']],
@@ -278,44 +278,48 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file, 
         draw_point(orders_layer, cpbase_map, row_a, col_a, h, w, [255, 0, 0, 255])  # RGBA red
         
         row_b, col_b = coord_to_cell(cdtmap_data, order['tolatitude'], order['tolongitude'])
-        draw_point(orders_layer, cpbase_map, row_b, col_b, h, w, [0, 255, 0, 255])  # RGBA blue
+        draw_point(orders_layer, cpbase_map, row_b, col_b, h, w, [0, 255, 0, 255])  # RGBA green
     
     for _, driver in drivers.iterrows():
         row_d, col_d = coord_to_cell(cdtmap_data, driver['locationlatitude'], driver['locationlongitude'])
-        draw_point(orders_layer, cpbase_map, row_d, col_d, h, w, [0, 0, 255, 255])  # RGBA green
-
+        draw_point(orders_layer, cpbase_map, row_d, col_d, h, w, [0, 0, 255, 255])  # RGBA blue
 
     drivers_reuse = pd.DataFrame(columns=drivers.columns)
 
     for _, order in orders.iterrows():
+        drivers_round = FIND_DRIVERS_ROUND_1_2(cdtmap_data, cpbase_map, order, 
+                                              pd.concat([drivers, drivers_reuse]), 
+                                              path_map, path_to_map)
         
-        drivers_round = []
+        selected_driver_id = FIND_DRIVERS_ROUND_3_4(order, drivers_round, users)
         
-        if drivers.empty:
-            drivers_round = FIND_DRIVERS_ROUND_1_2(cdtmap_data, cpbase_map, order, drivers_reuse, path_map,path_to_map)
-        else:
-            drivers_round = FIND_DRIVERS_ROUND_1_2(cdtmap_data, cpbase_map, order, drivers, path_map,path_to_map)
-        
-        selected_driver_id = FIND_DRIVERS_ROUND_3_4(order,drivers_round,users)
-        
-        driver_record = drivers[drivers['id'] == selected_driver_id]
+        if selected_driver_id is None:
+            print(f"Не удалось найти водителя для заказа {order['order_id']}")
+            continue
+            
+        # Ищем водителя в обоих DataFrames
+        driver_record = drivers[drivers['driver_id'] == selected_driver_id]
+        if driver_record.empty:
+            driver_record = drivers_reuse[drivers_reuse['driver_id'] == selected_driver_id]
         
         if driver_record.empty:
-            print(f"Водитель {selected_driver_id} отсутствует в основном списке!")
+            print(f"Водитель {selected_driver_id} отсутствует в списках!")
+            continue
+
+        user_record = users[users['user_id'] == order['user_id']].iloc[0]
+        
+        save_driver_order_info(driver_record.iloc[0], order, user_record)
+        
+        # Удаляем водителя из соответствующего DataFrame и добавляем в reuse
+        if selected_driver_id in drivers['driver_id'].values:
+            drivers = drivers[drivers['driver_id'] != selected_driver_id]
         else:
-
-
-            user_record = users[users['user_id'] == order['user_id']].iloc[0]
+            drivers_reuse = drivers_reuse[drivers_reuse['driver_id'] != selected_driver_id]
             
-            save_driver_order_info(driver_record, order, user_record)
-            
-            drivers_reuse = DRIVER_REUSE_CFG(drivers_reuse, driver_record.iloc[0], order)   
-            drivers = drivers.drop(driver_record.index)
+        drivers_reuse = DRIVER_REUSE_CFG(drivers_reuse, driver_record.iloc[0], order)
     
     fig, ax = plt.subplots(figsize=(12, 12))
     
-
-
     ax.imshow(cpbase_map, cmap='gray')
 
     ax.imshow(path_to_map,alpha=0.8)
@@ -324,7 +328,7 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file, 
 
     ax.set_xlabel('Longitude')
     ax.set_ylabel('Latitude')
-    ax.set_title(f'Orders and Drivers Map\nBounding box: {cdtmap_data["x1"]}°-{cdtmap_data["x2"]}° N, {cdtmap_data["y1"]}°-{cdtmap_data["y2"]}° E')
+    ax.set_title(f'Orders and Drivers Map\nBounding box: {cdtmap_data['x1']}°-{cdtmap_data['x2']}° N, {cdtmap_data['y1']}°-{cdtmap_data['y2']}° E')
     
     from matplotlib.patches import Patch
     legend_elements = [
@@ -338,6 +342,7 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file, 
     plt.tight_layout()
     plt.show()
 
-map_data = read_cdtmap("./Data/data_map.CDTMAP")
-print(f"Размер ячейки: {map_data['box_size_m']:.1f} метров")
-plot_cdtmap_with_orders_and_drivers(map_data, "./Data/orders.csv", "./Data/drivers.csv",'./Data/users.csv')
+if __name__ == "__main__":
+    map_data = read_cdtmap("./Data/data_map.CDTMAP")
+    print(f"Размер ячейки: {map_data['box_size_m']:.1f} метров")
+    plot_cdtmap_with_orders_and_drivers(map_data, "./Data/orders.csv", "./Data/drivers.csv", './Data/users.csv')
