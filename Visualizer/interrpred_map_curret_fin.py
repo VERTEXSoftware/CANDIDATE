@@ -291,15 +291,15 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file, 
 
     for _, order in orders.iterrows():
         
-        drivers_round = []
         
-        if drivers.empty or reuse_count>=5:
+        if drivers.empty or reuse_count>=15:
             print("reuse_active")
             reuse_count=0
-            drivers_round = FIND_DRIVERS_ROUND_1_2(cdtmap_data, cpbase_map, order, pd.concat([drivers, drivers_reuse]), path_map,path_to_map)
+            drivers = pd.concat([drivers, drivers_reuse])
         else:
             reuse_count+=1
-            drivers_round = FIND_DRIVERS_ROUND_1_2(cdtmap_data, cpbase_map, order, drivers, path_map,path_to_map)
+        
+        drivers_round = FIND_DRIVERS_ROUND_1_2(cdtmap_data, cpbase_map, order, drivers, path_map,path_to_map)
         
         #drivers_round = FIND_DRIVERS_ROUND_1_2(cdtmap_data, cpbase_map, order, pd.concat([drivers, drivers_reuse]), path_map, path_to_map)
         
@@ -347,7 +347,7 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file, 
         Patch(facecolor='red', label='Клиент'),
         Patch(facecolor='green', label='Точка назначения'),
         Patch(facecolor='blue', label='Водители'),
-        Patch(facecolor='yellow', label='Путь до точки назначения'),
+        Patch(facecolor='yellow', label='Путь до такси'),
     ]
     ax.legend(handles=legend_elements, loc='upper right')
     
