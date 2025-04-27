@@ -103,7 +103,7 @@ def astar(cpbase_map: np.ndarray, start: Tuple[int, int], goal: Tuple[int, int])
     return None
 
 def calculate_and_save_driver_metrics(cdtmap_data, base_map, drivers, rides, output_file="driver_stat.csv"):
-    # Calculate fly distance if not already present
+
     if 'distance_fly' not in rides.columns:
         rides['distance_fly'] = rides.apply(
             lambda x: Calc_fly_dist(x['fromlatitude'], x['fromlongitude'], 
@@ -111,7 +111,7 @@ def calculate_and_save_driver_metrics(cdtmap_data, base_map, drivers, rides, out
             axis=1
         )
     
-    # Calculate price per meter (fly distance)
+
     rides['price_per_meter_fly'] = rides.apply(
         lambda x: x['ride_price'] / x['distance_fly'] if x['distance_fly'] > 0 else 0,
         axis=1
@@ -132,7 +132,7 @@ def calculate_and_save_driver_metrics(cdtmap_data, base_map, drivers, rides, out
             print(f"Error calculating road distance for ride {row.get('order_id', 'unknown')}: {e}")
             return row['distance_fly']
     
-    # Calculate road distance and related metrics
+
     rides['distance_road'] = rides.apply(
         lambda x: calc_road_distance(x, cdtmap_data, base_map),
         axis=1
@@ -145,16 +145,16 @@ def calculate_and_save_driver_metrics(cdtmap_data, base_map, drivers, rides, out
         axis=1
     )
     
-    # Calculate driver statistics
+
     driver_stats = rides.groupby('driver_id').agg({
         'price_per_meter_fly': 'mean',
         'price_per_meter_road': 'mean',
         'max_distance': 'mean',
-        'rating': 'mean',  # Fixed from 'driver_rating' to 'rating'
+        'rating': 'mean', 
         'ride_price': ['sum', 'mean']
     }).reset_index()
     
-    # Flatten multi-index columns
+
     driver_stats.columns = [
         'driver_id', 
         'avg_price_per_meter_fly', 
@@ -165,10 +165,10 @@ def calculate_and_save_driver_metrics(cdtmap_data, base_map, drivers, rides, out
         'avg_price'
     ]
     
-    # Calculate max average price per meter
+
     driver_stats['max_avg_price_meter'] = driver_stats[['avg_price_per_meter_fly', 'avg_price_per_meter_road']].max(axis=1)
     
-    # Select and order output columns
+
     output_columns = [
         'driver_id',
         'avg_price_per_meter_fly',
@@ -181,14 +181,14 @@ def calculate_and_save_driver_metrics(cdtmap_data, base_map, drivers, rides, out
     ]
     driver_stats = driver_stats[output_columns]
     
-    # Save to CSV
+
     driver_stats.to_csv(output_file, index=False, float_format='%.4f')
     print(f"Driver metrics saved to {output_file}")
     
-    # Merge with drivers data
+
     drivers = drivers.merge(driver_stats, on='driver_id', how='left')
     
-    # Fill missing values
+
     stats_mean = driver_stats.mean()
     for col in ['avg_price_per_meter_fly', 'avg_price_per_meter_road', 
                 'avg_max_distance_meters', 'avg_rating', 'avg_price']:
@@ -242,14 +242,14 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file, 
     
     for _, order in orders.iterrows():
         row_a, col_a = coord_to_cell(cdtmap_data, order['fromlatitude'], order['fromlongitude'])
-        draw_point(orders_layer, cpbase_map, row_a, col_a, h, w, [255, 0, 0, 255])  # RGBA red
+        draw_point(orders_layer, cpbase_map, row_a, col_a, h, w, [255, 0, 0, 255])
         
         row_b, col_b = coord_to_cell(cdtmap_data, order['tolatitude'], order['tolongitude'])
-        draw_point(orders_layer, cpbase_map, row_b, col_b, h, w, [0, 255, 0, 255])  # RGBA green
+        draw_point(orders_layer, cpbase_map, row_b, col_b, h, w, [0, 255, 0, 255])
     
     for _, driver in drivers.iterrows():
         row_d, col_d = coord_to_cell(cdtmap_data, driver['locationlatitude'], driver['locationlongitude'])
-        draw_point(orders_layer, cpbase_map, row_d, col_d, h, w, [0, 0, 255, 255])  # RGBA blue
+        draw_point(orders_layer, cpbase_map, row_d, col_d, h, w, [0, 0, 255, 255])
 
     drivers = calculate_and_save_driver_metrics(cdtmap_data, cpbase_map, drivers, rides)
 
