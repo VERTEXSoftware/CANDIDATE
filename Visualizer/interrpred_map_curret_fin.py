@@ -287,10 +287,21 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file, 
 
     drivers_reuse = pd.DataFrame(columns=drivers.columns)
 
+    reuse_count = 0
+
     for _, order in orders.iterrows():
-        drivers_round = FIND_DRIVERS_ROUND_1_2(cdtmap_data, cpbase_map, order, 
-                                              pd.concat([drivers, drivers_reuse]), 
-                                              path_map, path_to_map)
+        
+        drivers_round = []
+        
+        if drivers.empty or reuse_count>=5:
+            print("reuse_active")
+            reuse_count=0
+            drivers_round = FIND_DRIVERS_ROUND_1_2(cdtmap_data, cpbase_map, order, pd.concat([drivers, drivers_reuse]), path_map,path_to_map)
+        else:
+            reuse_count+=1
+            drivers_round = FIND_DRIVERS_ROUND_1_2(cdtmap_data, cpbase_map, order, drivers, path_map,path_to_map)
+        
+        #drivers_round = FIND_DRIVERS_ROUND_1_2(cdtmap_data, cpbase_map, order, pd.concat([drivers, drivers_reuse]), path_map, path_to_map)
         
         selected_driver_id = FIND_DRIVERS_ROUND_3_4(order, drivers_round, users,rides)
         
