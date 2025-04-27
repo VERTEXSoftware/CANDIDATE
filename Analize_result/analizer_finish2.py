@@ -1,7 +1,9 @@
+
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# Загрузка данных
+
+
 orders_df = pd.read_csv('./Data/driver_order_result.csv')
 drivers_df = pd.read_csv('./Data/drivers.csv')
 
@@ -36,30 +38,20 @@ category_counts = drivers_orders['category'].value_counts()[category_order]
 # Цвета для каждой категории (соответствуют новому порядку)
 colors = ['#66b3ff', '#99ff99', '#ff9999']
 
-# Построение круговой диаграммы
-plt.figure(figsize=(10, 8))
-wedges, texts, autotexts = plt.pie(
-    category_counts,
-    labels=None,
-    autopct='%1.1f%%',
-    startangle=90,
-    colors=colors,
-    pctdistance=0.85,
-    wedgeprops={'edgecolor': 'white', 'linewidth': 0.5},
-    textprops={'fontsize': 12}
+
+plt.figure(figsize=(10, 6))
+plt.hist(
+    drivers_orders['order_count'],
+    bins=range(0, drivers_orders['order_count'].max() + 2),  # Разбиваем по целым числам
+    edgecolor='black',
+    alpha=0.7,
+    color='#66b3ff'
 )
 
-# Легенда с правильным порядком
-plt.legend(
-    wedges,
-    category_counts.index,
-    title="Категории водителей",
-    loc="upper right",
-    bbox_to_anchor=(1, 1),
-    fontsize=10
-)
-
-plt.axis('equal')
-plt.title('Распределение таксистов по активности', pad=20, fontsize=14)
+plt.xlabel('Количество заказов', fontsize=12)
+plt.ylabel('Количество водителей', fontsize=12)
+plt.title('Распределение количества заказов на водителя', pad=20, fontsize=14)
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.xticks(range(0, drivers_orders['order_count'].max() + 1))  # Метки по целым числам
 plt.tight_layout()
 plt.show()
