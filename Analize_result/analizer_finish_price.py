@@ -1,19 +1,17 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# Загрузка данных
+
 orders_df = pd.read_csv('./Data/driver_order_result.csv')
 
-# Фильтрация данных (если есть нулевые или отрицательные цены)
 orders_df = orders_df[orders_df['ride_price'] > 0]
 
-# Построение гистограммы
+
 plt.figure(figsize=(10, 6))
 plt.hist(
     orders_df['ride_price'],
-    bins=30,  # Количество интервалов
-    edgecolor='black',
-    color='#66b3ff',
+    bins=30,
+    color='green',
     alpha=0.7
 )
 
