@@ -215,6 +215,9 @@ def read_cdtmap(filename):
         height_m = lat_deg_per_cell * 111320
         width_m = lon_deg_per_cell * 111320 * math.cos(avg_lat)
         
+        print(width, height)
+        print(x1, y1, x2, y2)
+        
         return {
             'x1': x1,
             'y1': y1,
@@ -257,18 +260,21 @@ def FIND_DRIVERS_ROUND_3_4(order, drivers_round, users, drivers_stat):
     return selected_driver['driver_id']
 '''
 
+
+
 def FIND_DRIVERS_ROUND_3_4(order, drivers_round, users, drivers_stat):
     if drivers_round.empty:
-        return None
-    
+        return None    
     start_price = order['start_price']
     best_score = -float('inf')
     best_driver_id = None 
+    
     for _, driver in drivers_round.iterrows():
         driver_id = driver['driver_id']
         max_dist = driver['max_dist']
         max_to_dist = driver['max_to_dist']       
         driver_stats = drivers_stat[drivers_stat['driver_id'] == driver_id]      
+        
         if not driver_stats.empty:
             stats = driver_stats.iloc[0]
             avg_price_per_meter_fly = stats['avg_price_per_meter_fly']
@@ -278,26 +284,37 @@ def FIND_DRIVERS_ROUND_3_4(order, drivers_round, users, drivers_stat):
             avg_rating = stats['avg_rating']
             avg_price = stats['avg_price']
             total_ride_price = stats['total_ride_price']  
+            
             # 1. Коэффициент близости (чем ближе - тем лучше)
             distance_score = 1 / (max_dist + 0.1)  # +0.1 чтобы избежать деления на 0  
+            
             # 2. Соотношение цены клиента к средней цене за метр (выгодность заказа)
             price_ratio = start_price / (max_to_dist * max_avg_price_meter)  
+            
             # 3. Соответствие дистанции заказа возможностям водителя
             distance_suitability = 1 - min(1, max_to_dist / (avg_max_distance_meters + 0.1))      
+            
             # 4. Приоритет для водителей с малым заработком (обратная зависимость)
             earnings_priority = 1 / (total_ride_price + 1000)  # +1000 чтобы избежать слишком больших значений     
-            # Итоговый score (можно настроить веса)
+            
+            # 5. Учет рейтинга водителя (чем выше рейтинг - тем лучше)
+            rating_score = avg_rating / 5.0  # Нормализуем рейтинг к диапазону 0-1
+            
+            # Итоговый score с весовыми коэффициентами
             score = (
-                0.3 * distance_score +         # Важность близости водителя
-                0.4 * price_ratio +            # Важность выгодности цены
-                0.2 * distance_suitability +   # Важность подходящей дистанции
-                0.1 * earnings_priority        # Важность поддержки новых водителей
-            )        
+                0.25 * distance_score +        # Важность близости водителя
+                0.35 * price_ratio +           # Важность выгодности цены
+                0.15 * distance_suitability +  # Важность подходящей дистанции
+                0.1 * earnings_priority +      # Важность поддержки новых водителей
+                0.15 * rating_score            # Важность рейтинга водителя
+            )                
             # Добавляем небольшой случайный фактор для разнообразия
             score *= (0.95 + 0.1 * random.random())   
+            
             if score > best_score:
                 best_score = score
                 best_driver_id = driver_id
+                
     return best_driver_id
 
 def DRIVER_REUSE_CFG(drivers_reuse, driver, order):
