@@ -7,7 +7,7 @@
 клиента до конечной точки.
 Третий и четвертый раунды анализируют и выбирают водителя при схождении критериев
 клиента и водителя.
-
-<div align="center" style="margin-top: 30px;">
+<div style="margin-top: 30px;"></div>
+<div align="center">
   <img src="raunds_sys.png" alt="Алг CANDIDATE" width="900">
 </div>
