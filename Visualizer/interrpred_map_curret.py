@@ -17,7 +17,6 @@ def draw_path(base_map, path_astar, width, height, path_value=255):
     return path_map
 
 def draw_path_on_map(cpbase_map: np.ndarray, path: List[Tuple[int, int]], path_value: int = 255) -> np.ndarray:
-    """Отрисовывает путь на копии карты."""
     if path is None:
         return cpbase_map
     path_map = cpbase_map.copy()
@@ -50,7 +49,6 @@ def draw_point(orders_layer, base_map, y, x, h, w, clr):
                 base_map[y+j, x+i] = 1
 
 def heuristic(a: Tuple[int, int], b: Tuple[int, int]) -> int:
-    """Манхэттенское расстояние между точками a и b."""
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 def Calc_fly_dist(lat1, lon1, lat2, lon2):
@@ -203,7 +201,7 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file):
     cpbase_map = base_map.reshape((h, w)).copy()
     
     orders_layer = np.zeros((h, w, 4), dtype=np.uint8)
-    path_map = np.zeros((h, w), dtype=np.uint8)  # Отдельный слой для пути
+    path_map = np.zeros((h, w), dtype=np.uint8)
     
     orders = pd.read_csv(orders_file)
     drivers = pd.read_csv(drivers_file)
@@ -225,11 +223,8 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file):
     fig, ax = plt.subplots(figsize=(12, 12))
     
 
-    # Отображаем базовую карту
     ax.imshow(cpbase_map, cmap='gray')
-    # Отображаем пути (белым цветом)
     ax.imshow(path_map,alpha=0.8)
-    # Отображаем точки заказов и водителей
     ax.imshow(orders_layer, alpha=0.7)
 
     ax.set_xlabel('Longitude')
