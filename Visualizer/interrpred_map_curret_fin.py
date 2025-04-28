@@ -30,11 +30,10 @@ def draw_path(base_map, path_astar, width, height, path_value=255):
     return path_map
 
 def draw_path_on_map(cpbase_map: np.ndarray, path: List[Tuple[int, int]], path_value: int = 255) -> np.ndarray:
-    """Отрисовывает путь на копии карты."""
     if path is None:
         return cpbase_map
     path_map = cpbase_map.copy()
-    for y, x in path:  # Обратите внимание: (y, x) для numpy-матрицы!
+    for y, x in path:
         if 0 <= y < path_map.shape[0] and 0 <= x < path_map.shape[1]:
             path_map[y, x] = path_value
     return path_map
@@ -267,14 +266,12 @@ def FIND_DRIVERS_ROUND_3_4(order, drivers_round, users, drivers_stat):
         return None    
     start_price = order['start_price']
     best_score = -float('inf')
-    best_driver_id = None 
-    
+    best_driver_id = None   
     for _, driver in drivers_round.iterrows():
         driver_id = driver['driver_id']
         max_dist = driver['max_dist']
         max_to_dist = driver['max_to_dist']       
         driver_stats = drivers_stat[drivers_stat['driver_id'] == driver_id]      
-        
         if not driver_stats.empty:
             stats = driver_stats.iloc[0]
             avg_price_per_meter_fly = stats['avg_price_per_meter_fly']
@@ -283,23 +280,17 @@ def FIND_DRIVERS_ROUND_3_4(order, drivers_round, users, drivers_stat):
             avg_max_distance_meters = stats['avg_max_distance_meters']
             avg_rating = stats['avg_rating']
             avg_price = stats['avg_price']
-            total_ride_price = stats['total_ride_price']  
-            
+            total_ride_price = stats['total_ride_price']             
             # 1. Коэффициент близости (чем ближе - тем лучше)
-            distance_score = 1 / (max_dist + 0.1)  # +0.1 чтобы избежать деления на 0  
-            
+            distance_score = 1 / (max_dist + 0.1)  # +0.1 чтобы избежать деления на 0     
             # 2. Соотношение цены клиента к средней цене за метр (выгодность заказа)
-            price_ratio = start_price / (max_to_dist * max_avg_price_meter)  
-            
+            price_ratio = start_price / (max_to_dist * max_avg_price_meter)     
             # 3. Соответствие дистанции заказа возможностям водителя
-            distance_suitability = 1 - min(1, max_to_dist / (avg_max_distance_meters + 0.1))      
-            
+            distance_suitability = 1 - min(1, max_to_dist / (avg_max_distance_meters + 0.1))           
             # 4. Приоритет для водителей с малым заработком (обратная зависимость)
-            earnings_priority = 1 / (total_ride_price + 1000)  # +1000 чтобы избежать слишком больших значений     
-            
+            earnings_priority = 1 / (total_ride_price + 1000)  # +1000 чтобы избежать слишком больших значений        
             # 5. Учет рейтинга водителя (чем выше рейтинг - тем лучше)
-            rating_score = avg_rating / 5.0  # Нормализуем рейтинг к диапазону 0-1
-            
+            rating_score = avg_rating / 5.0  # Нормализуем рейтинг к диапазону 0-1          
             # Итоговый score с весовыми коэффициентами
             score = (
                 0.25 * distance_score +        # Важность близости водителя
@@ -391,8 +382,7 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file, 
         if selected_driver_id is None:
             print(f"Не удалось найти водителя для заказа {order['order_id']}")
             continue
-            
-        # Ищем водителя в обоих DataFrames
+ 
         driver_record = drivers[drivers['driver_id'] == selected_driver_id]
         if driver_record.empty:
             driver_record = drivers_reuse[drivers_reuse['driver_id'] == selected_driver_id]
@@ -405,7 +395,6 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file, 
         
         save_driver_order_info(driver_record.iloc[0], order, user_record)
         
-        # Удаляем водителя из соответствующего DataFrame и добавляем в reuse
         if selected_driver_id in drivers['driver_id'].values:
             drivers = drivers[drivers['driver_id'] != selected_driver_id]
         else:
