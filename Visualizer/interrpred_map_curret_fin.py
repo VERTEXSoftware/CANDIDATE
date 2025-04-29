@@ -9,7 +9,7 @@ import csv
 import random
 
 MAX_DIST_M = 3000
-
+pd.options.mode.chained_assignment = None
 
 def create_csv(filename, data, delimiter=','):
     try:
@@ -157,7 +157,7 @@ def FIND_DRIVERS_ROUND_1_2(cdtmap_data, base_map, order, drivers, path_map, path
     attempt = 0
     
     while attempt < max_attempts:
-        print(f"Поиск водителей в радиусе {current_max_dist:.0f} метров (попытка {attempt + 1})")
+        #print(f"Поиск водителей в радиусе {current_max_dist:.0f} метров (попытка {attempt + 1})")
         
         for _, driver in drivers.iterrows():
             pos_d_lat = driver['locationlatitude']
@@ -179,7 +179,7 @@ def FIND_DRIVERS_ROUND_1_2(cdtmap_data, base_map, order, drivers, path_map, path
                     driver_data['road_dist'] = (len(path_drv)-1)*cdtmap_data['box_size_m']
                     path_map[:, :] = draw_path_on_map(path_map[:, :], path_drv, 200)
                 
-                print(f"Driver {driver['driver_id']} fly distance: {driver_data['fly_dist']:.1f}m road distance: {driver_data['road_dist']:.1f}m")
+                #print(f"Driver {driver['driver_id']} fly distance: {driver_data['fly_dist']:.1f}m road distance: {driver_data['road_dist']:.1f}m")
                 
                 driver_data['road_to_dist'] = road_to_dist_m
                 
@@ -309,8 +309,8 @@ def FIND_DRIVERS_ROUND_3_4(order, drivers_round, users, drivers_stat):
     return best_driver_id
 
 def DRIVER_REUSE_CFG(drivers_reuse, driver, order):
-    driver['locationlatitude'] = order['tolatitude']
-    driver['locationlongitude'] = order['tolongitude']
+    driver.loc['locationlatitude'] = order['tolatitude']
+    driver.loc['locationlongitude'] = order['tolongitude']
     return pd.concat([drivers_reuse, driver.to_frame().T], ignore_index=True)
     
 def save_driver_order_info(driver, order, user, filename='./Data/driver_order_result.csv'):
@@ -367,7 +367,7 @@ def plot_cdtmap_with_orders_and_drivers(cdtmap_data, orders_file, drivers_file, 
         
         
         if drivers.empty or reuse_count>=80:
-            print("reuse_active")
+            print("Переиспользование водителей")
             reuse_count=0
             drivers = pd.concat([drivers, drivers_reuse])
         else:
